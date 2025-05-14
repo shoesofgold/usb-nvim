@@ -50,19 +50,19 @@ The bin/nvim(.exe) is stripped from the path string, then custom config paths ar
 - Inside src/nvim/os/stdpaths_defs.h, place a custom function prototype.
 - Starting around line 15:
 
-    void buildPTH(void);
+    `void buildPTH(void);`
     
 - Inside src/nvim/main.c, call the custom function from stdpaths_defs.h.
 - Starting around line 255:
 
-    //Build config paths relative to nvim executable
-    buildPTH();
+   `//Build config paths relative to nvim executable
+    buildPTH();`
 
 - Inside src/nvim/os/stdpaths.c, comment out the original env defs and place the block of custom code.
 - Starting around line 33:
 
-    #ifdef MSWIN
-    # include <Windows.h>
+   `#ifdef MSWIN
+    #include <Windows.h>
     
     char localPTH[MAXPATHL];
     char tempPTH[MAXPATHL];
@@ -163,7 +163,7 @@ The bin/nvim(.exe) is stripped from the path string, then custom config paths ar
       [kXDGConfigDirs] = "/etc/xdg/",
       [kXDGDataDirs] = "/usr/local/share/:/usr/share/",
     #endif
-    };
+    };`
 
 Build from source
 -------------------
@@ -175,8 +175,8 @@ Build from source
 The build is CMake-based, but a Makefile is provided as a convenience.
 After installing the dependencies, run the following command.
 
-    make CMAKE_BUILD_TYPE=RelWithDebInfo CMAKE_INSTALL_PREFIX=install
-    make install
+    `make CMAKE_BUILD_TYPE=RelWithDebInfo CMAKE_INSTALL_PREFIX=install`
+    `make install`
 
 I recommend using a cmake install prefix:
 
@@ -195,4 +195,4 @@ CMake hints for inspecting the build:
 License
 -------
 
-Apache 2.0 license, copied from the official [Neovim](https://github.com/neovim/neovim.git) repo.
+Apache 2.0 license
