@@ -55,13 +55,13 @@ The bin/nvim(.exe) is stripped from the path string, then custom config paths ar
 - Inside src/nvim/main.c, call the custom function from stdpaths_defs.h.
 - Starting around line 255:
 
-   `//Build config paths relative to nvim executable
-    buildPTH();`
+   `//Build config paths relative to nvim executable`
+    `buildPTH();`
 
 - Inside src/nvim/os/stdpaths.c, comment out the original env defs and place the block of custom code.
 - Starting around line 33:
-
-    `#ifdef MSWIN
+```
+    #ifdef MSWIN
      #include <Windows.h>
     
     char localPTH[MAXPATHL];
@@ -163,8 +163,8 @@ The bin/nvim(.exe) is stripped from the path string, then custom config paths ar
       [kXDGConfigDirs] = "/etc/xdg/",
       [kXDGDataDirs] = "/usr/local/share/:/usr/share/",
     #endif
-    };`
-
+    };
+```
 Build from source
 -------------------
 
