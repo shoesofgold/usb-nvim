@@ -8,7 +8,10 @@ About USB-Nvim
 USB-Nvim is a patch archive to show people how to make Neovim totally portable.
 USB-Nvim is self contained withitn a single directory structure; No more scattered config files everywhere on your system.
 
+Absolutely no warranty is offered or implied.
+
 I am not a developer. I have zero dev experience. If something goes wrong with building or using this repo, then I have no idea how to help you.
+I am not responsible for damages or loss of data resulting from use or misuse of this product.
 
 Features
 --------
@@ -35,11 +38,13 @@ Pre-built packages for Windows, and Linux are found on the [Releases](https://gi
 Patch layout
 --------------
 
+```
     ├─ src/nvim/        	application source code (see src/nvim/README.md in the official Neovim source)
     │ ├─ os/            	low-level platform code
 	│	├─ stdpaths.c		Custom functions are placed inside of #ifdef statements for Windows and Linux.
 	│	├─ stdpaths_defs.h	A single line placed to prototype a custom function.
     └─ main.c    	      	A single line placed to call a custom function.
+```
 
 How it works
 ------------
@@ -50,16 +55,21 @@ The bin/nvim(.exe) is stripped from the path string, then custom config paths ar
 - Inside src/nvim/os/stdpaths_defs.h, place a custom function prototype.
 - Starting around line 15:
 
-    `void buildPTH(void);`
-    
+```
+    void buildPTH(void);
+```    
+
 - Inside src/nvim/main.c, call the custom function from stdpaths_defs.h.
 - Starting around line 255:
 
-   `//Build config paths relative to nvim executable`
-    `buildPTH();`
+```
+   //Build config paths relative to nvim executable
+   buildPTH();
+```
 
 - Inside src/nvim/os/stdpaths.c, comment out the original env defs and place the block of custom code.
 - Starting around line 33:
+
 ```
     #ifdef MSWIN
      #include <Windows.h>
@@ -165,6 +175,7 @@ The bin/nvim(.exe) is stripped from the path string, then custom config paths ar
     #endif
     };
 ```
+
 Build from source
 -------------------
 
@@ -174,23 +185,27 @@ Build from source
 
 The build is CMake-based, but a Makefile is provided as a convenience.
 After installing the dependencies, run the following command.
-
-    `make CMAKE_BUILD_TYPE=RelWithDebInfo CMAKE_INSTALL_PREFIX=install`
-    `make install`
-
+```
+    make CMAKE_BUILD_TYPE=RelWithDebInfo CMAKE_INSTALL_PREFIX=install
+    make install
+```
 I recommend using a cmake install prefix:
 
-- `cmake -S cmake.deps -B .deps -G Ninja -D CMAKE_BUILD_TYPE=RelWithDebInfo`
-- `cmake --build .deps --config RelWithDebInfo`
-- `cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=install/nvim`
-- `cmake --build build`
-- `cmake --install build`
+```
+- cmake -S cmake.deps -B .deps -G Ninja -D CMAKE_BUILD_TYPE=RelWithDebInfo
+- cmake --build .deps --config RelWithDebInfo
+- cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=install/nvim
+- cmake --build build
+- cmake --install build
+```
 
 CMake hints for inspecting the build:
 
-- `cmake --build build --target help` lists all build targets.
-- `build/CMakeCache.txt` (or `cmake -LAH build/`) contains the resolved values of all CMake variables.
-- `build/compile_commands.json` shows the full compiler invocations for each translation unit.
+```
+- cmake --build build --target help > lists all build targets.
+- build/CMakeCache.txt > (or `cmake -LAH build/`) contains the resolved values of all CMake variables.
+- build/compile_commands.json > shows the full compiler invocations for each translation unit.
+```
 
 License
 -------
