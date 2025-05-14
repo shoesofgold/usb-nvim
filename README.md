@@ -61,8 +61,8 @@ The bin/nvim(.exe) is stripped from the path string, then custom config paths ar
 - Inside src/nvim/os/stdpaths.c, comment out the original env defs and place the block of custom code.
 - Starting around line 33:
 
-   `#ifdef MSWIN
-    #include <Windows.h>
+    `#ifdef MSWIN
+     #include <Windows.h>
     
     char localPTH[MAXPATHL];
     char tempPTH[MAXPATHL];
