@@ -3,7 +3,6 @@ About USB-Nvim
 
 - NVIM v0.12.0-dev
 - Build type: RelWithDebInfo
-- LuaJIT 2.1.1744317938
 
 USB-Nvim is a patch archive to show people how to make Neovim totally portable.
 USB-Nvim is self contained withitn a single directory structure; No more scattered config files everywhere on your system.
