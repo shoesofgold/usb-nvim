@@ -1,11 +1,8 @@
 **About USB-Nvim**
 --------------
 
-- NVIM v0.12.0-dev
-- Build type: RelWithDebInfo
-
-USB-Nvim is a patch archive to show people how to make Neovim totally portable.
-USB-Nvim is self contained withitn a single directory structure; No more scattered config files everywhere on your system.
+USB-Nvim is self contained withitn a single directory structure.
+No more scattered config files all over hell.
 
 **Absolutely no warranty is offered or implied.**
 
@@ -146,10 +143,10 @@ The bin/nvim(.exe) is stripped from the path string, then custom config paths ar
     	strcpy(cache, path);
     	strcpy(localState, path);
     	
-    	strcat(config, "linux/.config");
-    	strcat(localShare, "linux/.local/share");
-    	strcat(cache, "linux/.cache");
-    	strcat(localState, "linux/.local/state");
+    	strcat(config, "home/.config");
+    	strcat(localShare, "home/.local/share");
+    	strcat(cache, "home/.cache");
+    	strcat(localState, "home/.local/state");
     }
     #endif
     

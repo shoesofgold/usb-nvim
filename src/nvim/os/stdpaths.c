@@ -37,7 +37,7 @@ char localPTH[MAXPATHL];
 char tempPTH[MAXPATHL];
 
 void buildPTH(){
-  char buf[MAX_PATH];
+  char buf[MAXPATHL];
 
   //use win32 api to get path to executable
   DWORD copied = GetModuleFileName(NULL, buf, (DWORD)sizeof(buf));
@@ -103,10 +103,10 @@ buildPTH(){
 	strcpy(cache, path);
 	strcpy(localState, path);
 	
-	strcat(config, "linux/.config");
-	strcat(localShare, "linux/.local/share");
-	strcat(cache, "linux/.cache");
-	strcat(localState, "linux/.local/state");
+	strcat(config, "home/.config");
+	strcat(localShare, "home/.local/share");
+	strcat(cache, "home/.cache");
+	strcat(localState, "home/.local/state");
 }
 #endif
 
