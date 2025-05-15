@@ -54,14 +54,14 @@ The bin/nvim(.exe) is stripped from the path string, then custom config paths ar
 - Inside src/nvim/os/stdpaths_defs.h, place a custom function prototype.
 - Starting around line 15:
 
-```
+```c
     void buildPTH(void);
 ```    
 
 - Inside src/nvim/main.c, call the custom function from stdpaths_defs.h.
 - Starting around line 255:
 
-```
+```c
    //Build config paths relative to nvim executable
    buildPTH();
 ```
@@ -69,7 +69,7 @@ The bin/nvim(.exe) is stripped from the path string, then custom config paths ar
 - Inside src/nvim/os/stdpaths.c, comment out the original env defs and place the block of custom code.
 - Starting around line 33:
 
-```
+```c
     #ifdef MSWIN
      #include <Windows.h>
     
@@ -184,7 +184,7 @@ The bin/nvim(.exe) is stripped from the path string, then custom config paths ar
 
 **I recommend using a cmake install prefix:**
 
-```
+```cmake
 - cmake -S cmake.deps -B .deps -G Ninja -D CMAKE_BUILD_TYPE=RelWithDebInfo
 - cmake --build .deps --config RelWithDebInfo
 - cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=install/nvim
@@ -194,7 +194,7 @@ The bin/nvim(.exe) is stripped from the path string, then custom config paths ar
 
 CMake hints for inspecting the build:
 
-```
+```cmake
 - cmake --build build --target help	 lists all build targets.
 - build/CMakeCache.txt			 (or `cmake -LAH build/`) contains the resolved values of all CMake variables.
 - build/compile_commands.json		 shows the full compiler invocations for each translation unit.
