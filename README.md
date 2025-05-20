@@ -52,16 +52,16 @@ I've created a custom function for Windows and Linux that gets the executable pa
 The bin/nvim(.exe) is stripped from the path string, then custom config paths are created from the resulting string relative to that particular nvim instance.
 
 - Inside src/nvim/os/stdpaths_defs.h, place a custom function prototype.
-- Starting around line 15:
 
 ```c
+	//around line 15
     void buildPTH(void);
 ```    
 
 - Inside src/nvim/main.c, call the custom function from stdpaths_defs.h.
-- Starting around line 255:
 
 ```c
+   //around line 255
    //Build config paths relative to nvim executable
    buildPTH();
 ```
@@ -70,86 +70,108 @@ The bin/nvim(.exe) is stripped from the path string, then custom config paths ar
 - Starting around line 33:
 
 ```c
+	//around line 18
+	#ifdef INCLUDE_GENERATED_DECLARATIONS
+    # include "os/fs.h.generated.h"
+    # include "os/stdpaths.c.generated.h"
+    #endif
+    
+    //around line 33
     #ifdef MSWIN
-     #include <Windows.h>
+    # include <Windows.h>
     
-    char localPTH[MAXPATHL];
-    char tempPTH[MAXPATHL];
+    char localPTH[MAX_PATH];
+    char tempPTH[MAX_PATH];
+    char nvimPTH[MAX_PATH];
     
-    void buildPTH(){
-      char buf[MAXPATHL];
+    void buildPTH()
+    {
+      char buf[MAX_PATH];
     
-      //use win32 api to get path to executable
+      // Get executable path
       DWORD copied = GetModuleFileName(NULL, buf, (DWORD)sizeof(buf));
       if (copied == 0 || copied >= sizeof(buf)) {
         buf[0] = '\0';
       }
     
-      // Find `"bin/nvim.exe"` in the path & truncate
-      char *pos = strstr(buf, "bin\\nvim.exe");  // Locate substring
+      // Truncate at "bin\nvim.exe"
+      char *pos = strstr(buf, "bin");
       if (pos != NULL) {
         *pos = '\0';
       }
-      //construct path variables relative to nvim executable
+    
+      // Construct paths relative to executable
       strcpy(localPTH, buf);
       strcpy(tempPTH, buf);
+      strcpy(nvimPTH, buf);
+    
       strcat(localPTH, "local");
       strcat(tempPTH, "local\\temp");
+      strcat(nvimPTH, "local\\nvim");
+    
+      // Create directories if they don't exist
+      os_mkdir_recurse(tempPTH, 0700, NULL, NULL);
+      os_mkdir_recurse(nvimPTH, 0700, NULL, NULL);
     }
     
     static const char *const xdg_defaults_env_vars[] = {
-        [kXDGConfigHome] = localPTH,
-        [kXDGDataHome] = localPTH,
-        [kXDGCacheHome] = tempPTH,
-        [kXDGStateHome] = localPTH,
-        [kXDGRuntimeDir] = NULL,  // Decided by vim_mktempdir().
-        [kXDGConfigDirs] = NULL,
-        [kXDGDataDirs] = NULL,
+      [kXDGConfigHome] = localPTH,
+      [kXDGDataHome] = localPTH,
+      [kXDGCacheHome] = tempPTH,
+      [kXDGStateHome] = localPTH,
+      [kXDGRuntimeDir] = NULL,  // Decided by vim_mktempdir().
+      [kXDGConfigDirs] = NULL,
+      [kXDGDataDirs] = NULL,
     };
-    #else
-    #include <unistd.h>
     
-    char config[MAXPATHL];
-    char localShare[MAXPATHL];
-    char cache[MAXPATHL];
-    char localState[MAXPATHL];
+    #else  // Linux/Unix
     
-    buildPTH(){
-    	//use the pid of nvim to get a file path to the executable
-    	pid_t pid = getpid();
-    	char command[MAXPATHL];
-    	char buf[MAXPATHL];
-    	char path[MAXPATHL];
+    # include <linux/limits.h>
+    # include <unistd.h>
     
-    	//construct a command string to use with popen
-    	sprintf(command, "readlink -f /proc/%d/exe", pid);
-    	FILE *p;
-    	p = popen(command, "r");
+    char config[PATH_MAX];
+    char localShare[PATH_MAX];
+    char cache[PATH_MAX];
+    char localState[PATH_MAX];
+    char nvimPTH[PATH_MAX];
     
-    	//pipe popen stream into string variable
-    	while (fgets(buf, MAXPATHL, p) != NULL)
-    		sprintf(path, "%s", buf);
-    	pclose(p);
+    void buildPTH()
+    {
+      char buf[PATH_MAX];
+      ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
     
-    	//strip "bin/nvim" from executable path
-    	char *pos = strstr(path, "bin/nvim");
-    	if (pos != NULL) {
-    		*pos = '\0';
-    	}
-    	
-    	//construct new paths relative to nvim executable
-    	strcpy(config, path);
-    	strcpy(localShare, path);
-    	strcpy(cache, path);
-    	strcpy(localState, path);
-    	
-    	strcat(config, "home/.config");
-    	strcat(localShare, "home/.local/share");
-    	strcat(cache, "home/.cache");
-    	strcat(localState, "home/.local/state");
+      if (len != -1) {
+        buf[len] = '\0';
+    
+        // Truncate at "bin/nvim"
+        char *pos = strstr(buf, "bin");
+        if (pos != NULL) {
+          *pos = '\0';
+        }
+    
+        // Construct paths relative to executable
+        strcpy(config, buf);
+        strcpy(localShare, buf);
+        strcpy(cache, buf);
+        strcpy(localState, buf);
+        strcpy(nvimPTH, buf);
+    
+        strcat(config, "home/.config");
+        strcat(localShare, "home/.local/share");
+        strcat(cache, "home/.local/cache");
+        strcat(localState, "home/.local/state");
+        strcat(nvimPTH, "home/.config/nvim");
+    
+        // Create directories if they don't exist
+        os_mkdir_recurse(config, 0700, NULL, NULL);
+        os_mkdir_recurse(localShare, 0700, NULL, NULL);
+        os_mkdir_recurse(cache, 0700, NULL, NULL);
+        os_mkdir_recurse(localState, 0700, NULL, NULL);
+        os_mkdir_recurse(nvimPTH, 0700, NULL, NULL);
+      }
     }
-    #endif
     
+    #endif
     
     /// Defaults for XDGVarType values
     ///

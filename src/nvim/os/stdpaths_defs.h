@@ -13,4 +13,4 @@ typedef enum {
 } XDGVarType;
 
 //custom function for building relative paths to nvim executable
-void buildPTH(void);
+extern void buildPTH(void);
