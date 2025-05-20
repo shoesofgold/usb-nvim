@@ -54,7 +54,7 @@ The bin/nvim(.exe) is stripped from the path string, then custom config paths ar
 - Inside src/nvim/os/stdpaths_defs.h, place a custom function prototype.
 
 ```c
-	//around line 15
+    //around line 15
     void buildPTH(void);
 ```    
 
@@ -70,8 +70,8 @@ The bin/nvim(.exe) is stripped from the path string, then custom config paths ar
 - Starting around line 33:
 
 ```c
-	//around line 18
-	#ifdef INCLUDE_GENERATED_DECLARATIONS
+    //around line 18
+    #ifdef INCLUDE_GENERATED_DECLARATIONS
     # include "os/fs.h.generated.h"
     # include "os/stdpaths.c.generated.h"
     #endif
