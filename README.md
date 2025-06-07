@@ -23,7 +23,7 @@ usb-nvim/home/.config/nvim/init.lua
 
 - Portability
 - Multiple Neovim configurations can be used by simply having multiple copies of USB-Nvim.
-- Should be buildable with by any means the official neovim repo is built.
+- Should be buildable by any means the official neovim repo is built.
 
 **`"That's just about the size of it." - Rango`**
 
