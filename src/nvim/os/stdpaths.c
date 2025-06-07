@@ -143,7 +143,7 @@ void BuildPth(char* arg0)
     os_mkdir_recurse(cache, 0700, NULL, NULL);
     os_mkdir_recurse(localState, 0700, NULL, NULL);
     os_mkdir_recurse(nvimPTH, 0700, NULL, NULL);
-  }
+  
 }
 
 #endif
