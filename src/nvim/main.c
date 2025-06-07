@@ -238,9 +238,6 @@ void early_init(mparm_T *paramp)
   TIME_MSG("inits 1");
 
   set_lang_var();               // set v:lang and v:ctype
-
-  // initialize quickfix list
-  qf_init_stack();
 }
 
 #ifdef MAKE_LIB
@@ -253,7 +250,7 @@ int main(int argc, char **argv)
   argv0 = argv[0];
 
   //Populate paths for portable nvim
-  buildPTH();
+  BuildPth(argv[0]);
 
   if (!appname_is_valid()) {
     fprintf(stderr, "$NVIM_APPNAME must be a name or relative path.\n");
@@ -659,6 +656,7 @@ int main(int argc, char **argv)
 #if defined(MSWIN) && !defined(MAKE_LIB)
   xfree(argv);
 #endif
+
   return 0;
 }
 
@@ -941,11 +939,12 @@ static void remote_request(mparm_T *params, int remote_args, char *server_addr, 
     if (!chan) {
       fprintf(stderr, "Remote ui failed to start: %s\n", connect_error);
       os_exit(1);
-    } else if (strequal(server_addr, os_getenv_noalloc("NVIM"))) {
+    } else if (strequal(server_addr, os_getenv("NVIM"))) {
       fprintf(stderr, "%s", "Cannot attach UI of :terminal child to its parent. ");
       fprintf(stderr, "%s\n", "(Unset $NVIM to skip this check)");
       os_exit(1);
     }
+
     ui_client_channel_id = chan;
     return;
   }
@@ -2068,7 +2067,7 @@ static void do_exrc_initialization(void)
       nlua_exec(cstr_as_string(str), (Array)ARRAY_DICT_INIT, kRetNilBool, NULL, &err);
       xfree(str);
       if (ERROR_SET(&err)) {
-        semsg("Error in %s:", VIMRC_LUA_FILE);
+        semsg("Error detected while processing %s:", VIMRC_LUA_FILE);
         semsg_multiline("emsg", err.msg);
         api_clear_error(&err);
       }
@@ -2120,7 +2119,7 @@ static void source_startup_scripts(const mparm_T *const parmp)
 static int execute_env(char *env)
   FUNC_ATTR_NONNULL_ALL
 {
-  char *initstr = os_getenv(env);
+  const char *initstr = os_getenv(env);
   if (initstr == NULL) {
     return FAIL;
   }
@@ -2134,8 +2133,6 @@ static int execute_env(char *env)
 
   estack_pop();
   current_sctx = save_current_sctx;
-
-  xfree(initstr);
   return OK;
 }
 

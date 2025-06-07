@@ -66,21 +66,15 @@ static const char *const xdg_defaults[] = {
 */
 
 #ifdef MSWIN
-# include <Windows.h>
 
-char localPTH[MAX_PATH];
-char tempPTH[MAX_PATH];
-char nvimPTH[MAX_PATH];
+char localPTH[MAXPATHL];
+char tempPTH[MAXPATHL];
+char nvimPTH[MAXPATHL];
 
-void buildPTH()
+void BuildPth(char* arg0)
 {
-  char buf[MAX_PATH];
+  char* buf = arg0;
 
-  // Get executable path
-  DWORD copied = GetModuleFileName(NULL, buf, (DWORD)sizeof(buf));
-  if (copied == 0 || copied >= sizeof(buf)) {
-    buf[0] = '\0';
-  }
 
   // Truncate at "bin\nvim.exe"
   char *pos = strstr(buf, "bin");
@@ -114,22 +108,15 @@ static const char *const xdg_defaults_env_vars[] = {
 
 #else  // Linux/Unix
 
-# include <linux/limits.h>
-# include <unistd.h>
+char config[MAXPATHL];
+char localShare[MAXPATHL];
+char cache[MAXPATHL];
+char localState[MAXPATHL];
+char nvimPTH[MAXPATHL];
 
-char config[PATH_MAX];
-char localShare[PATH_MAX];
-char cache[PATH_MAX];
-char localState[PATH_MAX];
-char nvimPTH[PATH_MAX];
-
-void buildPTH()
+void BuildPth(char* arg0)
 {
-  char buf[PATH_MAX];
-  ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
-
-  if (len != -1) {
-    buf[len] = '\0';
+    char* buf = arg0;
 
     // Truncate at "bin/nvim"
     char *pos = strstr(buf, "bin");

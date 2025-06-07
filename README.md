@@ -23,15 +23,15 @@ usb-nvim/home/.config/nvim/init.lua
 
 - Portability
 - Multiple Neovim configurations can be used by simply having multiple copies of USB-Nvim.
+- Should be buildable with by any means the official neovim repo is built.
 
 **`"That's just about the size of it." - Rango`**
 
 **Downsides**
 ---------
 
-- Some folks are left out cuz' I don't have the means (or desire) to build on Apple garbage.
-- There are no managed packages on distro repos. I'm not even sure how to go about getting that kind of attention or support.
-- I was not able to get a succesful build using MSYS2's UCRT64 shell, so I was unfortunately forced to use VS2022 bullshit.
+- I don't have the means (or desire) to test builds on Apple garbage.
+- There are no managed packages on distro repos for auto updates. I'm not even sure how to go about getting that kind of attention or support.
 
 **`"Sometimes life is bigger than means." - Mr. Tsoding`**
 
@@ -57,149 +57,137 @@ Pre-built packages for Windows, and Linux are found on the [**Releases**](https:
 I've created a custom function for Windows and Linux that gets the executable path of nvim on every launch.
 The bin/nvim(.exe) is stripped from the path string, then custom config paths are created from the resulting string relative to that particular nvim instance.
 
-- Inside src/nvim/os/stdpaths_defs.h, place a custom function prototype.
+- Inside src/nvim/os/os.h, place a custom function prototype.
 
 ```c
-    //around line 15
-    extern void buildPTH(void);
+//around line 29
+//custom function for building relative paths to nvim executable
+extern void BuildPth(char *arg0);
 ```    
 
-- Inside src/nvim/main.c, call the custom function from stdpaths_defs.h.
+- Inside src/nvim/main.c, call the custom function from os.h
 
 ```c
-   //around line 255
-   //Build config paths relative to nvim executable
-   buildPTH();
+//around line 255
+//Build config paths relative to nvim executable
+BuildPth(argv[0]);
 ```
 
 - Inside src/nvim/os/stdpaths.c, comment out the original env defs and place the block of custom code.
 
 ```c
-    //around line 18
-    #ifdef INCLUDE_GENERATED_DECLARATIONS
-    # include "os/fs.h.generated.h"
-    # include "os/stdpaths.c.generated.h"
-    #endif
-    
-    //around line 33
-    #ifdef MSWIN
-    # include <Windows.h>
-    
-    char localPTH[MAX_PATH];
-    char tempPTH[MAX_PATH];
-    char nvimPTH[MAX_PATH];
-    
-    void buildPTH()
-    {
-      char buf[MAX_PATH];
-    
-      // Get executable path
-      DWORD copied = GetModuleFileName(NULL, buf, (DWORD)sizeof(buf));
-      if (copied == 0 || copied >= sizeof(buf)) {
-        buf[0] = '\0';
-      }
-    
-      // Truncate at "bin\nvim.exe"
-      char *pos = strstr(buf, "bin");
-      if (pos != NULL) {
+//around line 18
+#ifdef INCLUDE_GENERATED_DECLARATIONS
+# include "os/fs.h.generated.h"
+# include "os/stdpaths.c.generated.h"
+#endif
+
+//around line 33
+#ifdef MSWIN
+
+char localPTH[MAXPATHL];
+char tempPTH[MAXPATHL];
+char nvimPTH[MAXPATHL];
+
+void BuildPth(char* arg0)
+{
+    char* buf = arg0;
+
+
+    // Truncate at "bin\nvim.exe"
+    char *pos = strstr(buf, "bin");
+    if (pos != NULL) {
         *pos = '\0';
-      }
-    
-      // Construct paths relative to executable
-      strcpy(localPTH, buf);
-      strcpy(tempPTH, buf);
-      strcpy(nvimPTH, buf);
-    
-      strcat(localPTH, "local");
-      strcat(tempPTH, "local\\temp");
-      strcat(nvimPTH, "local\\nvim");
-    
-      // Create directories if they don't exist
-      os_mkdir_recurse(tempPTH, 0700, NULL, NULL);
-      os_mkdir_recurse(nvimPTH, 0700, NULL, NULL);
     }
-    
-    static const char *const xdg_defaults_env_vars[] = {
-      [kXDGConfigHome] = localPTH,
-      [kXDGDataHome] = localPTH,
-      [kXDGCacheHome] = tempPTH,
-      [kXDGStateHome] = localPTH,
-      [kXDGRuntimeDir] = NULL,  // Decided by vim_mktempdir().
-      [kXDGConfigDirs] = NULL,
-      [kXDGDataDirs] = NULL,
-    };
-    
-    #else  // Linux/Unix
-    
-    # include <linux/limits.h>
-    # include <unistd.h>
-    
-    char config[PATH_MAX];
-    char localShare[PATH_MAX];
-    char cache[PATH_MAX];
-    char localState[PATH_MAX];
-    char nvimPTH[PATH_MAX];
-    
-    void buildPTH()
-    {
-      char buf[PATH_MAX];
-      ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
-    
-      if (len != -1) {
-        buf[len] = '\0';
-    
-        // Truncate at "bin/nvim"
-        char *pos = strstr(buf, "bin");
-        if (pos != NULL) {
-          *pos = '\0';
-        }
-    
-        // Construct paths relative to executable
-        strcpy(config, buf);
-        strcpy(localShare, buf);
-        strcpy(cache, buf);
-        strcpy(localState, buf);
-        strcpy(nvimPTH, buf);
-    
-        strcat(config, "home/.config");
-        strcat(localShare, "home/.local/share");
-        strcat(cache, "home/.local/cache");
-        strcat(localState, "home/.local/state");
-        strcat(nvimPTH, "home/.config/nvim");
-    
-        // Create directories if they don't exist
-        os_mkdir_recurse(config, 0700, NULL, NULL);
-        os_mkdir_recurse(localShare, 0700, NULL, NULL);
-        os_mkdir_recurse(cache, 0700, NULL, NULL);
-        os_mkdir_recurse(localState, 0700, NULL, NULL);
-        os_mkdir_recurse(nvimPTH, 0700, NULL, NULL);
-      }
+
+    // Construct paths relative to executable
+    strcpy(localPTH, buf);
+    strcpy(tempPTH, buf);
+    strcpy(nvimPTH, buf);
+
+    strcat(localPTH, "local");
+    strcat(tempPTH, "local\\temp");
+    strcat(nvimPTH, "local\\nvim");
+
+    // Create directories if they don't exist
+    os_mkdir_recurse(tempPTH, 0700, NULL, NULL);
+    os_mkdir_recurse(nvimPTH, 0700, NULL, NULL);
+}
+
+static const char *const xdg_defaults_env_vars[] = {
+    [kXDGConfigHome] = localPTH,
+    [kXDGDataHome] = localPTH,
+    [kXDGCacheHome] = tempPTH,
+    [kXDGStateHome] = localPTH,
+    [kXDGRuntimeDir] = NULL,  // Decided by vim_mktempdir().
+    [kXDGConfigDirs] = NULL,
+    [kXDGDataDirs] = NULL,
+};
+
+#else  // Linux/Unix
+
+char config[MAXPATHL];
+char localShare[MAXPATHL];
+char cache[MAXPATHL];
+char localState[MAXPATHL];
+char nvimPTH[MAXPATHL];
+
+void BuildPth(char* arg0)
+{
+    char* buf = arg0;
+
+    // Truncate at "bin/nvim"
+    char *pos = strstr(buf, "bin");
+    if (pos != NULL) {
+        *pos = '\0';
     }
-    
-    #endif
-    
-    /// Defaults for XDGVarType values
-    ///
-    /// Used in case environment variables contain nothing. Need to be expanded.
-    static const char *const xdg_defaults[] = {
-    #ifdef MSWIN
-      [kXDGConfigHome] = localPTH,
-      [kXDGDataHome] = localPTH,
-      [kXDGCacheHome] = tempPTH,
-      [kXDGStateHome] = localPTH,
-      [kXDGRuntimeDir] = NULL,  // Decided by vim_mktempdir().
-      [kXDGConfigDirs] = NULL,
-      [kXDGDataDirs] = NULL,
+
+    // Construct paths relative to executable
+    strcpy(config, buf);
+    strcpy(localShare, buf);
+    strcpy(cache, buf);
+    strcpy(localState, buf);
+    strcpy(nvimPTH, buf);
+
+    strcat(config, "home/.config");
+    strcat(localShare, "home/.local/share");
+    strcat(cache, "home/.local/cache");
+    strcat(localState, "home/.local/state");
+    strcat(nvimPTH, "home/.config/nvim");
+
+    // Create directories if they don't exist
+    os_mkdir_recurse(config, 0700, NULL, NULL);
+    os_mkdir_recurse(localShare, 0700, NULL, NULL);
+    os_mkdir_recurse(cache, 0700, NULL, NULL);
+    os_mkdir_recurse(localState, 0700, NULL, NULL);
+    os_mkdir_recurse(nvimPTH, 0700, NULL, NULL);
+    }
+}
+
+#endif
+
+/// Defaults for XDGVarType values
+///
+/// Used in case environment variables contain nothing. Need to be expanded.
+static const char *const xdg_defaults[] = {
+#ifdef MSWIN
+    [kXDGConfigHome] = localPTH,
+    [kXDGDataHome] = localPTH,
+    [kXDGCacheHome] = tempPTH,
+    [kXDGStateHome] = localPTH,
+    [kXDGRuntimeDir] = NULL,  // Decided by vim_mktempdir().
+    [kXDGConfigDirs] = NULL,
+    [kXDGDataDirs] = NULL,
     #else
-      [kXDGConfigHome] = config,
-      [kXDGDataHome] = localShare,
-      [kXDGCacheHome] = cache,
-      [kXDGStateHome] = localState,
-      [kXDGRuntimeDir] = NULL,  // Decided by vim_mktempdir().
-      [kXDGConfigDirs] = "/etc/xdg/",
-      [kXDGDataDirs] = "/usr/local/share/:/usr/share/",
+    [kXDGConfigHome] = config,
+    [kXDGDataHome] = localShare,
+    [kXDGCacheHome] = cache,
+    [kXDGStateHome] = localState,
+    [kXDGRuntimeDir] = NULL,  // Decided by vim_mktempdir().
+    [kXDGConfigDirs] = "/etc/xdg/",
+    [kXDGDataDirs] = "/usr/local/share/:/usr/share/",
     #endif
-    };
+};
 ```
 
 **Build from source**
