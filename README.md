@@ -47,7 +47,7 @@ Pre-built packages for Windows, and Linux are found on the [**Releases**](https:
     ├─ src/nvim/
       ├─ os/
       │	 ├─ stdpaths.c
-      │	 ├─ stdpaths_defs.h
+      │	 ├─ os.h
       └─ main.c
 ```
 
