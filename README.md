@@ -6,8 +6,6 @@ No more scattered config files all over hell.
 
 **I am not a developer, I'm just a man with DD titties. If something goes wrong with building or using this repo, then I have no idea how to help you.**
 
-Also, please note that Neovim on Windows is just a bitchy experience anyways; You may find yourself with more problems than just getting this to run.
-
 **Highly experimental, use at your own risk.**
 
 ```
@@ -15,7 +13,7 @@ Windows config path:
 usb-nvim\local\nvim\init.lua
 
 Linux config path:
-usb-nvim/home/.config/nvim/init.lua
+usb-nvim/.config/nvim/init.lua
 ```
 
 **Features**
@@ -44,149 +42,194 @@ Pre-built packages for Windows, and Linux are found on the [**Releases**](https:
 --------------
 
 ```
-    ├─ src/nvim/
-      ├─ os/
-      │	 ├─ stdpaths.c
-      │	 ├─ os.h
-      └─ main.c
+    ├─ src/nvim/os/
+    	 ├─ stdpaths.c
 ```
 
 **How it works**
 ------------
 
-I've created a custom function for Windows and Linux that gets the executable path of nvim on every launch.
+A custom function gets the executable path of nvim on every launch.
 The bin/nvim(.exe) is stripped from the path string, then custom config paths are created from the resulting string relative to that particular nvim instance.
 
-- Inside src/nvim/os/os.h, place a custom function prototype.
+- Inside src/nvim/os/stdpaths.c, make the changes outlined in these excerpts.
 
 ```c
-//around line 29
-//custom function for building relative paths to nvim executable
-extern void BuildPth(char *arg0);
-```    
+// around line 18
+#include "fs.h"
 
-- Inside src/nvim/main.c, call the custom function from os.h
-
-```c
-//around line 255
-//Build config paths relative to nvim executable
-BuildPth(argv[0]);
-```
-
-- Inside src/nvim/os/stdpaths.c, comment out the original env defs and place the block of custom code.
-
-```c
-//around line 18
-#ifdef INCLUDE_GENERATED_DECLARATIONS
-# include "os/fs.h.generated.h"
-# include "os/stdpaths.c.generated.h"
-#endif
-
-//around line 33
-#ifdef MSWIN
-
-char localPTH[MAXPATHL];
-char tempPTH[MAXPATHL];
-char nvimPTH[MAXPATHL];
-
-void BuildPth(char* arg0)
-{
-    char* buf = arg0;
-
-
-    // Truncate at "bin\nvim.exe"
-    char *pos = strstr(buf, "bin");
-    if (pos != NULL) {
-        *pos = '\0';
-    }
-
-    // Construct paths relative to executable
-    strcpy(localPTH, buf);
-    strcpy(tempPTH, buf);
-    strcpy(nvimPTH, buf);
-
-    strcat(localPTH, "local");
-    strcat(tempPTH, "local\\temp");
-    strcat(nvimPTH, "local\\nvim");
-
-    // Create directories if they don't exist
-    os_mkdir_recurse(tempPTH, 0700, NULL, NULL);
-    os_mkdir_recurse(nvimPTH, 0700, NULL, NULL);
-}
-
-static const char *const xdg_defaults_env_vars[] = {
-    [kXDGConfigHome] = localPTH,
-    [kXDGDataHome] = localPTH,
-    [kXDGCacheHome] = tempPTH,
-    [kXDGStateHome] = localPTH,
-    [kXDGRuntimeDir] = NULL,  // Decided by vim_mktempdir().
-    [kXDGConfigDirs] = NULL,
-    [kXDGDataDirs] = NULL,
+// around line 21
+//remove 'const' from the xdg_ arrays
+static char *xdg_env_vars[] = {
+  [kXDGConfigHome] = "XDG_CONFIG_HOME",
+  [kXDGDataHome] = "XDG_DATA_HOME",
+  [kXDGCacheHome] = "XDG_CACHE_HOME",
+  [kXDGStateHome] = "XDG_STATE_HOME",
+  [kXDGRuntimeDir] = "XDG_RUNTIME_DIR",
+  [kXDGConfigDirs] = "XDG_CONFIG_DIRS",
+  [kXDGDataDirs] = "XDG_DATA_DIRS",
 };
 
-#else  // Linux/Unix
-
-char config[MAXPATHL];
-char localShare[MAXPATHL];
-char cache[MAXPATHL];
-char localState[MAXPATHL];
-char nvimPTH[MAXPATHL];
-
-void BuildPth(char* arg0)
-{
-    char* buf = arg0;
-
-    // Truncate at "bin/nvim"
-    char *pos = strstr(buf, "bin");
-    if (pos != NULL) {
-        *pos = '\0';
-    }
-
-    // Construct paths relative to executable
-    strcpy(config, buf);
-    strcpy(localShare, buf);
-    strcpy(cache, buf);
-    strcpy(localState, buf);
-    strcpy(nvimPTH, buf);
-
-    strcat(config, "home/.config");
-    strcat(localShare, "home/.local/share");
-    strcat(cache, "home/.local/cache");
-    strcat(localState, "home/.local/state");
-    strcat(nvimPTH, "home/.config/nvim");
-
-    // Create directories if they don't exist
-    os_mkdir_recurse(config, 0700, NULL, NULL);
-    os_mkdir_recurse(localShare, 0700, NULL, NULL);
-    os_mkdir_recurse(cache, 0700, NULL, NULL);
-    os_mkdir_recurse(localState, 0700, NULL, NULL);
-    os_mkdir_recurse(nvimPTH, 0700, NULL, NULL);
-}
-
+#ifdef MSWIN
+static char *xdg_defaults_env_vars[] = {
+  [kXDGConfigHome] = "LOCALAPPDATA",
+  [kXDGDataHome] = "LOCALAPPDATA",
+  [kXDGCacheHome] = "TEMP",
+  [kXDGStateHome] = "LOCALAPPDATA",
+  [kXDGRuntimeDir] = NULL,  // Decided by vim_mktempdir().
+  [kXDGConfigDirs] = NULL,
+  [kXDGDataDirs] = NULL,
+};
 #endif
 
 /// Defaults for XDGVarType values
 ///
 /// Used in case environment variables contain nothing. Need to be expanded.
-static const char *const xdg_defaults[] = {
+static char *xdg_defaults[] = {
 #ifdef MSWIN
-    [kXDGConfigHome] = localPTH,
-    [kXDGDataHome] = localPTH,
-    [kXDGCacheHome] = tempPTH,
-    [kXDGStateHome] = localPTH,
-    [kXDGRuntimeDir] = NULL,  // Decided by vim_mktempdir().
-    [kXDGConfigDirs] = NULL,
-    [kXDGDataDirs] = NULL,
-    #else
-    [kXDGConfigHome] = config,
-    [kXDGDataHome] = localShare,
-    [kXDGCacheHome] = cache,
-    [kXDGStateHome] = localState,
-    [kXDGRuntimeDir] = NULL,  // Decided by vim_mktempdir().
-    [kXDGConfigDirs] = "/etc/xdg/",
-    [kXDGDataDirs] = "/usr/local/share/:/usr/share/",
-    #endif
+  [kXDGConfigHome] = "~\\AppData\\Local",
+  [kXDGDataHome] = "~\\AppData\\Local",
+  [kXDGCacheHome] = "~\\AppData\\Local\\Temp",
+  [kXDGStateHome] = "~\\AppData\\Local",
+  [kXDGRuntimeDir] = NULL,  // Decided by vim_mktempdir().
+  [kXDGConfigDirs] = NULL,
+  [kXDGDataDirs] = NULL,
+#else
+  [kXDGConfigHome] = "~/.config",
+  [kXDGDataHome] = "~/.local/share",
+  [kXDGCacheHome] = "~/.cache",
+  [kXDGStateHome] = "~/.local/state",
+  [kXDGRuntimeDir] = NULL,  // Decided by vim_mktempdir().
+  [kXDGConfigDirs] = "/etc/xdg/",
+  [kXDGDataDirs] = "/usr/local/share/:/usr/share/",
+#endif
 };
+
+// around line 150
+/////////////////////////////////
+//usb-nvim START
+/////////////////////////////////
+static bool path_parent(char *path) {
+  size_t len = strlen(path);
+  while (len > 1 && path[len - 1] == '/') {
+    path[--len] = '\0';
+  }
+
+  char *slash = strrchr(path, '/');
+  if (slash == NULL) {
+    return false;
+  }
+
+#ifdef MSWIN
+  // Preserve a drive root, e.g. C:/.
+  if (slash == path + 2 && path[1] == ':') {
+    slash[1] = '\0';
+    return true;
+  }
+#endif
+
+  if (slash == path) { // Preserve Unix root, /.
+    path[1] = '\0';
+  } else {
+    *slash = '\0';
+  }
+  return true;
+}
+
+/// Return an allocated path under the portable root, e.g. root/local/temp.
+static char *portable_path(const char *relative) {
+  static bool root_checked;
+  static bool root_valid;
+  static char root[MAXPATHL];
+
+  if (!root_checked) {
+    root_checked = true;
+
+    char exe[MAXPATHL];
+    size_t size = sizeof(exe);
+    if (os_exepath(exe, &size) == 0) {
+#ifdef MSWIN
+      for (char *p = exe; *p != '\0'; p++) {
+        if (*p == '\\') {
+          *p = '/';
+        }
+      }
+#endif
+      // exe -> <root>/bin/nvim -> <root>/bin -> <root>
+      if (path_parent(exe)) {
+        xstrlcpy(root, exe, sizeof(root));
+        root_valid = true;
+      }
+    }
+  }
+
+  if (!root_valid) {
+    return NULL;
+  }
+
+  // Returns a newly allocated path; use "/" in relative segments on all
+  // platforms.
+  return concat_fnames_realloc(xstrdup(root), relative, true);
+}
+
+static void init_portable_defaults(void) {
+  static bool initialized;
+  if (initialized) {
+    return;
+  }
+  initialized = true;
+
+#ifdef MSWIN
+  char *config = portable_path("../local");
+  char *cache = portable_path("../local/temp");
+
+  if (config != NULL) {
+    xdg_defaults[kXDGConfigHome] = config;
+    xdg_defaults[kXDGDataHome] = config;
+    xdg_defaults[kXDGStateHome] = config;
+    xdg_defaults_env_vars[kXDGConfigHome] = config;
+    xdg_defaults_env_vars[kXDGDataHome] = config;
+    xdg_defaults_env_vars[kXDGStateHome] = config;
+  }
+  if (cache != NULL) {
+    xdg_defaults_env_vars[kXDGCacheHome] = cache;
+    xdg_defaults[kXDGCacheHome] = cache;
+  }
+#else
+  char *config = portable_path("../config");
+  char *data = portable_path("../local/share");
+  char *cache = portable_path("../local/temp");
+  char *state = portable_path("../local/state");
+
+  if (config != NULL){
+    xdg_defaults[kXDGConfigHome] = config;
+    xdg_env_vars[kXDGConfigHome] = config;
+}
+  if (data != NULL){
+    xdg_defaults[kXDGDataHome] = data;
+    xdg_env_vars[kXDGDataHome] = data;
+    }
+  if (cache != NULL){
+    xdg_defaults[kXDGCacheHome] = cache;
+    xdg_env_vars[kXDGCacheHome] = cache;
+    }
+  if (state != NULL){
+    xdg_defaults[kXDGStateHome] = state;
+    xdg_env_vars[kXDGStateHome] = state;
+    }
+#endif
+}
+/////////////////////////////////
+//usb-nvim END
+/////////////////////////////////
+
+char *stdpaths_get_xdg_var(const XDGVarType idx)
+  FUNC_ATTR_WARN_UNUSED_RESULT
+{
+// around line 275
+  init_portable_defaults();
+// ...
+}
 ```
 
 **Build from source**
@@ -199,19 +242,11 @@ static const char *const xdg_defaults[] = {
 **I recommend using a cmake install prefix:**
 
 ```cmake
-- cmake -S cmake.deps -B .deps -G Ninja -D CMAKE_BUILD_TYPE=RelWithDebInfo
-- cmake --build .deps --config RelWithDebInfo
-- cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=install/nvim
-- cmake --build build
+- cmake -S cmake.deps -B .deps -G Ninja -D CMAKE_BUILD_TYPE=Release
+- cmake --build .deps --config Release
+- cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install/nvim
+- cmake --build build --config Release
 - cmake --install build
-```
-
-CMake hints for inspecting the build:
-
-```cmake
-- cmake --build build --target help	 lists all build targets.
-- build/CMakeCache.txt			 (or `cmake -LAH build/`) contains the resolved values of all CMake variables.
-- build/compile_commands.json		 shows the full compiler invocations for each translation unit.
 ```
 
 **License**

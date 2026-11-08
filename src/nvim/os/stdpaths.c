@@ -2,35 +2,38 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "klib/kvec.h"
 #include "nvim/ascii_defs.h"
 #include "nvim/fileio.h"
 #include "nvim/globals.h"
 #include "nvim/memory.h"
-#include "nvim/os/fs.h"
 #include "nvim/os/os.h"
 #include "nvim/os/os_defs.h"
 #include "nvim/os/stdpaths_defs.h"
 #include "nvim/path.h"
 #include "nvim/strings.h"
 
-#include "klib/kvec.h"
+#include "os/stdpaths.c.generated.h"
 
-#ifdef INCLUDE_GENERATED_DECLARATIONS
-# include "os/fs.h.generated.h"
-# include "os/stdpaths.c.generated.h"
-#endif
+//usb-nvim
+#include "fs.h"
+
+//usb-nvim
+//remove 'const' from the xdg_ arrays
 
 /// Names of the environment variables, mapped to XDGVarType values
-static const char *xdg_env_vars[] = {
-  [kXDGConfigHome] = "XDG_CONFIG_HOME", [kXDGDataHome] = "XDG_DATA_HOME",
-  [kXDGCacheHome] = "XDG_CACHE_HOME",   [kXDGStateHome] = "XDG_STATE_HOME",
-  [kXDGRuntimeDir] = "XDG_RUNTIME_DIR", [kXDGConfigDirs] = "XDG_CONFIG_DIRS",
+static char *xdg_env_vars[] = {
+  [kXDGConfigHome] = "XDG_CONFIG_HOME",
+  [kXDGDataHome] = "XDG_DATA_HOME",
+  [kXDGCacheHome] = "XDG_CACHE_HOME",
+  [kXDGStateHome] = "XDG_STATE_HOME",
+  [kXDGRuntimeDir] = "XDG_RUNTIME_DIR",
+  [kXDGConfigDirs] = "XDG_CONFIG_DIRS",
   [kXDGDataDirs] = "XDG_DATA_DIRS",
 };
 
-/*
 #ifdef MSWIN
-static const char *const xdg_defaults_env_vars[] = {
+static char *xdg_defaults_env_vars[] = {
   [kXDGConfigHome] = "LOCALAPPDATA",
   [kXDGDataHome] = "LOCALAPPDATA",
   [kXDGCacheHome] = "TEMP",
@@ -44,7 +47,7 @@ static const char *const xdg_defaults_env_vars[] = {
 /// Defaults for XDGVarType values
 ///
 /// Used in case environment variables contain nothing. Need to be expanded.
-static const char *const xdg_defaults[] = {
+static char *xdg_defaults[] = {
 #ifdef MSWIN
   [kXDGConfigHome] = "~\\AppData\\Local",
   [kXDGDataHome] = "~\\AppData\\Local",
@@ -63,113 +66,6 @@ static const char *const xdg_defaults[] = {
   [kXDGDataDirs] = "/usr/local/share/:/usr/share/",
 #endif
 };
-*/
-
-#ifdef MSWIN
-
-char localPTH[MAXPATHL];
-char tempPTH[MAXPATHL];
-char nvimPTH[MAXPATHL];
-
-void BuildPth(char* arg0)
-{
-  char* buf = arg0;
-
-
-  // Truncate at "bin\nvim.exe"
-  char *pos = strstr(buf, "bin");
-  if (pos != NULL) {
-    *pos = '\0';
-  }
-
-  // Construct paths relative to executable
-  strcpy(localPTH, buf);
-  strcpy(tempPTH, buf);
-  strcpy(nvimPTH, buf);
-
-  strcat(localPTH, "local");
-  strcat(tempPTH, "local\\temp");
-  strcat(nvimPTH, "local\\nvim");
-
-  // Create directories if they don't exist
-  os_mkdir_recurse(tempPTH, 0700, NULL, NULL);
-  os_mkdir_recurse(nvimPTH, 0700, NULL, NULL);
-}
-
-static const char *const xdg_defaults_env_vars[] = {
-  [kXDGConfigHome] = localPTH,
-  [kXDGDataHome] = localPTH,
-  [kXDGCacheHome] = tempPTH,
-  [kXDGStateHome] = localPTH,
-  [kXDGRuntimeDir] = NULL,  // Decided by vim_mktempdir().
-  [kXDGConfigDirs] = NULL,
-  [kXDGDataDirs] = NULL,
-};
-
-#else  // Linux/Unix
-
-char config[MAXPATHL];
-char localShare[MAXPATHL];
-char cache[MAXPATHL];
-char localState[MAXPATHL];
-char nvimPTH[MAXPATHL];
-
-void BuildPth(char* arg0)
-{
-    char* buf = arg0;
-
-    // Truncate at "bin/nvim"
-    char *pos = strstr(buf, "bin");
-    if (pos != NULL) {
-      *pos = '\0';
-    }
-
-    // Construct paths relative to executable
-    strcpy(config, buf);
-    strcpy(localShare, buf);
-    strcpy(cache, buf);
-    strcpy(localState, buf);
-    strcpy(nvimPTH, buf);
-
-    strcat(config, "home/.config");
-    strcat(localShare, "home/.local/share");
-    strcat(cache, "home/.local/cache");
-    strcat(localState, "home/.local/state");
-    strcat(nvimPTH, "home/.config/nvim");
-
-    // Create directories if they don't exist
-    os_mkdir_recurse(config, 0700, NULL, NULL);
-    os_mkdir_recurse(localShare, 0700, NULL, NULL);
-    os_mkdir_recurse(cache, 0700, NULL, NULL);
-    os_mkdir_recurse(localState, 0700, NULL, NULL);
-    os_mkdir_recurse(nvimPTH, 0700, NULL, NULL);
-  
-}
-
-#endif
-
-/// Defaults for XDGVarType values
-///
-/// Used in case environment variables contain nothing. Need to be expanded.
-static const char *const xdg_defaults[] = {
-#ifdef MSWIN
-  [kXDGConfigHome] = localPTH,
-  [kXDGDataHome] = localPTH,
-  [kXDGCacheHome] = tempPTH,
-  [kXDGStateHome] = localPTH,
-  [kXDGRuntimeDir] = NULL,  // Decided by vim_mktempdir().
-  [kXDGConfigDirs] = NULL,
-  [kXDGDataDirs] = NULL,
-#else
-  [kXDGConfigHome] = config,
-  [kXDGDataHome] = localShare,
-  [kXDGCacheHome] = cache,
-  [kXDGStateHome] = localState,
-  [kXDGRuntimeDir] = NULL,  // Decided by vim_mktempdir().
-  [kXDGConfigDirs] = "/etc/xdg/",
-  [kXDGDataDirs] = "/usr/local/share/:/usr/share/",
-#endif
-};
 
 /// Gets the value of $NVIM_APPNAME, or "nvim" if not set.
 ///
@@ -178,19 +74,19 @@ static const char *const xdg_defaults[] = {
 /// @return $NVIM_APPNAME value
 const char *get_appname(bool namelike)
 {
-  const char *env_val = os_getenv("NVIM_APPNAME");
-  if (env_val == NULL || *env_val == NUL) {
-    env_val = "nvim";
+  const char *env_val = os_getenv_noalloc("NVIM_APPNAME");
+
+  if (!env_val) {
+    xstrlcpy(NameBuff, "nvim", sizeof(NameBuff));
   }
 
   if (namelike) {
     // Appname may be a relative path, replace slashes to make it name-like.
-    xstrlcpy(NameBuff, env_val, sizeof(NameBuff));
     memchrsub(NameBuff, '/', '-', sizeof(NameBuff));
     memchrsub(NameBuff, '\\', '-', sizeof(NameBuff));
   }
 
-  return env_val;
+  return NameBuff;
 }
 
 /// Ensure that APPNAME is valid. Must be a name or relative path.
@@ -199,12 +95,16 @@ bool appname_is_valid(void)
   const char *appname = get_appname(false);
   if (path_is_absolute(appname)
       // TODO(justinmk): on Windows, path_is_absolute says "/" is NOT absolute. Should it?
-      || strequal(appname, "/") || strequal(appname, "\\") || strequal(appname, ".")
+      || strequal(appname, "/")
+      || strequal(appname, "\\")
+      || strequal(appname, ".")
       || strequal(appname, "..")
 #ifdef BACKSLASH_IN_FILENAME
-      || strstr(appname, "\\..") != NULL || strstr(appname, "..\\") != NULL
+      || strstr(appname, "\\..") != NULL
+      || strstr(appname, "..\\") != NULL
 #endif
-      || strstr(appname, "/..") != NULL || strstr(appname, "../") != NULL) {
+      || strstr(appname, "/..") != NULL
+      || strstr(appname, "../") != NULL) {
     return false;
   }
   return true;
@@ -250,31 +150,150 @@ static char *xdg_remove_duplicate(char *ret, const char *sep)
   return result.items;
 }
 
+/////////////////////////////////
+//usb-nvim START
+/////////////////////////////////
+static bool path_parent(char *path) {
+  size_t len = strlen(path);
+  while (len > 1 && path[len - 1] == '/') {
+    path[--len] = '\0';
+  }
+
+  char *slash = strrchr(path, '/');
+  if (slash == NULL) {
+    return false;
+  }
+
+#ifdef MSWIN
+  // Preserve a drive root, e.g. C:/.
+  if (slash == path + 2 && path[1] == ':') {
+    slash[1] = '\0';
+    return true;
+  }
+#endif
+
+  if (slash == path) { // Preserve Unix root, /.
+    path[1] = '\0';
+  } else {
+    *slash = '\0';
+  }
+  return true;
+}
+
+/// Return an allocated path under the portable root, e.g. root/local/temp.
+static char *portable_path(const char *relative) {
+  static bool root_checked;
+  static bool root_valid;
+  static char root[MAXPATHL];
+
+  if (!root_checked) {
+    root_checked = true;
+
+    char exe[MAXPATHL];
+    size_t size = sizeof(exe);
+    if (os_exepath(exe, &size) == 0) {
+#ifdef MSWIN
+      for (char *p = exe; *p != '\0'; p++) {
+        if (*p == '\\') {
+          *p = '/';
+        }
+      }
+#endif
+      // exe -> <root>/bin/nvim -> <root>/bin -> <root>
+      if (path_parent(exe) && path_parent(exe)) {
+        xstrlcpy(root, exe, sizeof(root));
+        root_valid = true;
+      }
+    }
+  }
+
+  if (!root_valid) {
+    return NULL;
+  }
+
+  // Returns a newly allocated path; use "/" in relative segments on all
+  // platforms.
+  return concat_fnames_realloc(xstrdup(root), relative, true);
+}
+
+static void init_portable_defaults(void) {
+  static bool initialized;
+  if (initialized) {
+    return;
+  }
+  initialized = true;
+
+#ifdef MSWIN
+  char *config = portable_path("local");
+  char *cache = portable_path("local/temp");
+
+  if (config != NULL) {
+    xdg_defaults[kXDGConfigHome] = config;
+    xdg_defaults[kXDGDataHome] = config;
+    xdg_defaults[kXDGStateHome] = config;
+    xdg_defaults_env_vars[kXDGConfigHome] = config;
+    xdg_defaults_env_vars[kXDGDataHome] = config;
+    xdg_defaults_env_vars[kXDGStateHome] = config;
+  }
+  if (cache != NULL) {
+    xdg_defaults_env_vars[kXDGCacheHome] = cache;
+    xdg_defaults[kXDGCacheHome] = cache;
+  }
+#else
+  char *config = portable_path(".config");
+  char *data = portable_path("local/share");
+  char *cache = portable_path("local/temp");
+  char *state = portable_path("local/state");
+
+  if (config != NULL){
+    xdg_defaults[kXDGConfigHome] = config;
+    xdg_env_vars[kXDGConfigHome] = config;
+}
+  if (data != NULL){
+    xdg_defaults[kXDGDataHome] = data;
+    xdg_env_vars[kXDGDataHome] = data;
+    }
+  if (cache != NULL){
+    xdg_defaults[kXDGCacheHome] = cache;
+    xdg_env_vars[kXDGCacheHome] = cache;
+    }
+  if (state != NULL){
+    xdg_defaults[kXDGStateHome] = state;
+    xdg_env_vars[kXDGStateHome] = state;
+    }
+#endif
+}
+/////////////////////////////////
+//usb-nvim END
+/////////////////////////////////
+
 /// Return XDG variable value
 ///
 /// @param[in]  idx  XDG variable to use.
 ///
 /// @return [allocated] variable value.
-char *stdpaths_get_xdg_var(const XDGVarType idx) FUNC_ATTR_WARN_UNUSED_RESULT
+char *stdpaths_get_xdg_var(const XDGVarType idx)
+  FUNC_ATTR_WARN_UNUSED_RESULT
 {
-  const char *const env = xdg_env_vars[idx];
-  const char *const fallback = xdg_defaults[idx];
+  init_portable_defaults();
+  const char * env = xdg_env_vars[idx];
+  const char * fallback = xdg_defaults[idx];
 
-  const char *env_val = os_getenv(env);
+  char *env_val = os_getenv(env);
 
 #ifdef MSWIN
   if (env_val == NULL && xdg_defaults_env_vars[idx] != NULL) {
     env_val = os_getenv(xdg_defaults_env_vars[idx]);
   }
 #else
-  if (env_val == NULL && os_env_exists(env)) {
-    env_val = "";
+  if (env_val == NULL && os_env_exists(env, false)) {
+    env_val = xstrdup("");
   }
 #endif
 
   char *ret = NULL;
   if (env_val != NULL) {
-    ret = xstrdup(env_val);
+    ret = env_val;
   } else if (fallback) {
     ret = expand_env_save((char *)fallback);
   } else if (idx == kXDGRuntimeDir) {
@@ -302,7 +321,8 @@ char *stdpaths_get_xdg_var(const XDGVarType idx) FUNC_ATTR_WARN_UNUSED_RESULT
 /// @param[in]  idx  XDG directory to use.
 ///
 /// @return [allocated] "{xdg_directory}/$NVIM_APPNAME"
-char *get_xdg_home(const XDGVarType idx) FUNC_ATTR_WARN_UNUSED_RESULT
+char *get_xdg_home(const XDGVarType idx)
+  FUNC_ATTR_WARN_UNUSED_RESULT
 {
   char *dir = stdpaths_get_xdg_var(idx);
   const char *appname = get_appname(false);
