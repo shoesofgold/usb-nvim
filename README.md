@@ -155,8 +155,9 @@ static char *portable_path(const char *relative) {
         }
       }
 #endif
-      // exe -> <root>/bin/nvim -> <root>/bin -> <root>
-      if (path_parent(exe)) {
+      // THIS IS NOT A TYPO: the path_parent() logic has to run twice!
+      // clangd will complain, but it will compile.
+      if (path_parent(exe) && path_parent(exe)) {
         xstrlcpy(root, exe, sizeof(root));
         root_valid = true;
       }
